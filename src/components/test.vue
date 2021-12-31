@@ -6,24 +6,23 @@
 </template>
 
 <script>
-import { defineComponent, onMounted, reactive, ref } from 'vue';
-import { getWeb3 } from '@/module/js/web3.js';
+import { computed, defineComponent, onMounted, reactive } from 'vue';
+import { useStore } from 'vuex'
 export default defineComponent({
   name: 'Test',
   setup(props, content) {
-    const newWeb3 = reactive({});
-    const chainId = ref(null);
+    const store = useStore();
     let methodsFn = {
       init () {
-        getWeb3().then(res => {
-          Object.assign(newWeb3, res);
-          console.log(newWeb3, "newWeb3")
+        store.dispatch('getWeb3').then(res => {
+          console.log(res, "newWeb3")
         }).catch(err => {
           let { message } = err;
           console.log(message, "999")
         });
       }
     };
+    const newWeb3 = computed(() => store.state.ethereum);
     onMounted(() => {
       methodsFn.init();
     });
@@ -50,7 +49,6 @@ export default defineComponent({
     };
     return {
       sendBtn,
-      chainId
     }
   }
 });

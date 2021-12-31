@@ -76,3 +76,8 @@ export let getWeb3 = () => {
     })
   })
 }
+export let getChainChanged = () => {
+  window.ethereum.on('chainChanged', chainId => {
+    return chainId;
+  });
+}
