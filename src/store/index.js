@@ -5,7 +5,8 @@ export default createStore({
   state: {
     chainId: null,
     ethereum: {},
-    accounts: ''
+    accounts: '',
+    metaMaskCanUse: false
   },
   mutations: {
     SET_CHAINID(state, value) {
@@ -16,6 +17,9 @@ export default createStore({
     },
     CHANGE_ACCOUNTS(state, value) {
       state.accounts = value;
+    },
+    SET_META_MASKCANUSE(state, value) {
+      state.metaMaskCanUse = value;
     }
   },
   actions: {
@@ -32,22 +36,52 @@ export default createStore({
             }
           })
         } else {
+          commit('SET_META_MASKCANUSE', false);
           reject(new Error('Non-Ethereum browser detected. You should consider trying MetaMask!'));
         }
       }).then(result => {
+        // Pop-up metamask
+        return new Promise(function(resolve, reject) {
+          window.ethereum.request({
+            method: 'wallet_requestPermissions',
+            params: [{ eth_accounts: {} }],
+          })
+          .then((permissions) => {
+            const accountsPermission = permissions.find(
+              (permission) => permission.parentCapability === 'eth_accounts'
+            );
+            if (accountsPermission) {
+              console.log('eth_accounts permission successfully requested!');
+            }
+            resolve(result)
+          })
+          .catch((error) => {
+            if (error.code === 4001) {
+              // EIP-1193 userRejectedRequest error
+              console.log('Permissions needed to continue.');
+            } else {
+              console.error(error);
+            }
+            reject(new Error(error.message))
+          });
+        })
+      })
+      .then(result => {
         return new Promise(function(resolve, reject) {
           window.ethereum.request({ method: 'eth_requestAccounts' })
             .then(() => {
               dispatch('getChainId');
               resolve(result);
+              commit('SET_META_MASKCANUSE', true);
             }).catch((error) => {
               if (error.code === 4001) {
                 // EIP-1193 userRejectedRequest error
                 console.log('User rejected the request.');
               } else {
-                console.error(error);
+                console.error(error.message);
               }
-              reject(new Error(error))
+              commit('SET_META_MASKCANUSE', false);
+              reject(new Error(error.message))
             });    
         })
       })
@@ -105,12 +139,13 @@ export default createStore({
         return chainId;
       });
     },
-    getAccountsChanged({ dispatch ,commit }) {
+    getAccountsChanged({ dispatch, commit }) {
       window.ethereum.on('accountsChanged', accounts => {
+        console.log('accountsChanged');
         commit('CHANGE_ACCOUNTS', accounts)
         dispatch('getWeb3');
       });
-    }
+    },
   },
   modules: {
   }
